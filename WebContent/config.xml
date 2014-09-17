@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="com.example.hello" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0">
+<widget id="com.example.hello" version="2.0.1" xmlns="http://www.w3.org/ns/widgets" xmlns:gap="http://phonegap.com/ns/1.0">
     <name>Exemplo Interface Surf</name>
     <description>Aplicação de exemplo de Interface para o Surf.</description>
     <author email="neliofolgoa@gmail.com" href="http://phonegap.com">Nelio Folgoa</author>
