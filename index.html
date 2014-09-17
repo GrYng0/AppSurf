@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="themes/Surfing.min.css" />
+	<link rel="stylesheet" href="themes/jquery.mobile.icons.min.css" />
+	<link rel="stylesheet" href="css/jquery.mobile.structure-1.4.2.min.css" />
+	<script type="text/javascript" charset="utf-8" src="cordova.js"></script>
+	<script type="text/javascript" charset="utf-8" src="xui.js"></script>
+	<script src="js/jquery-1.10.2.min.js"></script>
+	<script src="js/jquery.mobile-1.4.2.min.js"></script>
+	<script src="js/functions.js"></script>
+	<script type="text/javascript" charset="utf-8">
+			
+		document.addEventListener("deviceready", onDeviceReady, true);
+		var db = null;
+	
+		
+		// CRONOMETRO EXERCICIO
+		var seconds = null;
+		var ticker = null;
+		var timerActive = false;
+		
+		// XML DO EXERCICIO - UTILIZAR JSON...
+		var listaExercicios = new Array();
+		var exercicio = '{"id":"id", "date":"date", "athlete":"athlete", "eventlist":[]}'; 
+		var doc = JSON.parse(exercicio);
+		
+		var rootName = null;
+		var startedExercise = false;
+		
+		var nextExercicioId = 1;
+		
+		$( document ).on( "pagecreate", function() {
+			$("#backButton").click(function() {
+				 
+				if(listaExercicios.length > 0) {
+					
+					$("#exerciciosSet").empty();
+					
+					for(var i = 0; i < listaExercicios.length; i++)
+					{
+						var ex = listaExercicios[i];
+						var obj = JSON.parse(ex);
+						
+						var content = "<div data-role='collapsible' id='set" + obj.id + "'><h3>Exercício " + obj.id + "</h3><p><table><tr><th>Atleta:</th><td>"+obj.athlete+"</td></tr><tr><th>Data:</th><td>"+obj.date+"</td></tr></p></div>";
+						$("#exerciciosSet").append(content).collapsibleset("refresh");
+					}
+					
+							        
+				}
+		        
+		   	});
+		});
+		
+		$( function() {
+		    $( "#popupSurfista" ).enhanceWithin().popup();
+		});
+		
+		
+		function onDeviceReady() {
+			
+			
+			document.addEventListener("backbutton", onBackKeyDown, false);
+		}
+		
+		// REVER ISTO -----------------------------------------------------------------------------------------------
+		$("#popupSurfista").on("pagebeforehide", function(e) {
+			alert("Page Changed...");
+			resetExercicio();
+		});
+		// -----------------------------------------------------------------------------------------------------------
+		
+		function onBackKeyDown(e) {
+			if($.mobile.activePage.is('#pagePrincipal')){
+		        e.preventDefault();
+		        navigator.app.exitApp();
+
+		    }
+		    else {
+		        navigator.app.backHistory()
+		    }
+		}
+		
+		function timer()
+		{
+			if(timerActive)
+			{
+				stopTimer();
+				
+				//doc += 
+				endExercicio();
+		        
+		        //saveFileContent();
+			}
+			else
+			{
+				startTimer();
+				startedExercise = true;
+				doc = startDoc(document.getElementById("name").value, nextExercicioId, doc);
+				doc = startEventList(doc);
+				
+			}
+		}
+		
+		function startTimer()
+		{
+		    seconds = -1;
+		    ticker = setInterval("tick()", 1000);
+		    tick();
+		    timerActive = true;
+		    document.getElementById("timerButton").innerHTML = "Parar";
+		    enableButtons();
+		}
+		
+		function stopTimer()
+		{
+			clearInterval(ticker);
+			timerActive = false;
+			document.getElementById("timerButton").innerHTML = "Iniciar";
+			disableButtons();
+		}
+	
+		function tick()
+		{
+		    ++seconds;
+		    var secs = seconds;
+		    var hrs = Math.floor( secs / 3600 );
+		    secs %= 3600;
+		    var mns = Math.floor( secs / 60 );
+		    secs %= 60;
+		    var pretty = hrs
+		               + "h" + ( mns < 10 ? "0" : "" ) + mns
+		               + "m" + ( secs < 10 ? "0" : "" ) + secs + "s";
+		    document.getElementById("tempoDecorrido").innerHTML = pretty;
+		}
+		
+		function start()
+		{
+			doc = startDoc(document.getElementById("name").value, nextExercicioId, doc);
+			
+		}
+		
+		function setEvent(evt)
+		{
+			var time = document.getElementById("tempoDecorrido").innerHTML;
+			var type = evt.value; 
+			doc = addEvent(time, type, doc);
+		}
+		
+		//db = window.openDatabase("SURF_DB", "1.0", "The SURFAPP Database", 200000); //will create database Dummy_DB or open it
+		//db.transaction(populateDB, errorCB1, successCB);
+		
+		// DATABASE ----------------------------------------------------------------
+		
+		
+		
+		// 		function onFileSystemSuccess(fileSystem) {
+		// 			//alert(fileSystem.root);
+		// 			//alert(fileSystem.root.fullPath + " | " + fileSystem.root.name + " | " + fileSystem.name + " | " + fileSystem.root + " | " + fileSystem.root.name);
+		// 			rootName = fileSystem.root.fullPath;
+		// 			fileSystem.root.getFile("session.xml",
+		// 			{create: true, exclusive: false},
+		// 			gotFileEntry, fail);
+					
+		// 		}
+		
+		
+		// END -------------------------------------------------------------------------
+		
+		
+		function resetExercicio()
+		{
+			document.getElementById("tempoDecorrido").innerHTML = "0h00m00s";
+		}
+		
+		
+		function AddStatusLine(st)
+		{
+			
+			document.getElementById("appStatus").innerHTML += "<p>" + st + "</p>"; 
+			
+		}
+		
+		function endExercicio()
+		{
+			nextExercicioId++;
+		    startedExercise = false;
+		    
+		    var obj = JSON.stringify(doc);
+		    listaExercicios.push(obj);
+		    
+		    doc = JSON.parse(exercicio);
+			
+		}
+		
+		// SINCRONIZAR OS EXERCICIOS COM O SERVIDOR ------------------------------------------
+		function SyncAll()
+		{
+			AddStatusLine("A sincronizar...");
+			for(i = 0; i < listaExercicios.length; i++)
+			{
+				SyncExercicio(listaExercicios[i]);
+			}
+			AddStatusLine("Exercícios enviados.");
+		}
+
+		function SyncExercicio(exe)
+		{
+			$.ajax({
+                type: "POST",
+                url: "http://www.sporttools.org/surfstat1/SaveExercise.php",
+                data: ({fexercise: exe}),
+                cache: false,
+                dataType: "text",
+                success: SyncResult
+              });
+			
+			
+			/*
+			var xmlhttp;
+			
+			if (window.XMLHttpRequest)
+			{// code for IE7+, Firefox, Chrome, Opera, Safari
+				xmlhttp=new XMLHttpRequest();
+			}
+			else
+			{// code for IE6, IE5
+				xmlhttp=new ActiveXObject("Microsoft.XMLHTTP");
+			}
+			
+			xmlhttp.onreadystatechange=
+			
+			xmlhttp.open("POST","http://www.sporttools.org/surfstat1/SaveExercise.php",true);
+			xmlhttp.setRequestHeader("Content-type","application/x-www-form-urlencoded");
+			xmlhttp.send("fexercicio="+exe);
+			*/
+		}
+		
+		function SyncResult(data)
+		{
+				AddStatusLine(data);
+				//document.getElementById("myDiv").innerHTML=;
+		}
+		
+		// --------------------------------------------------------------------------------
+		
+		
+    </script>
+	<title>Surf</title>
+</head>
+<body>
+
+<!-- SURFISTA POPUP ******************************************************************* -->
+<div data-role="popup" id="popupSurfista" data-theme="a" data-dismissible="false" data-corners="false">
+    <form method="post" action="">
+        <div style="padding:10px 20px;">
+            <h3>Surfista</h3>
+	        <label for="name">Nome:</label>
+	        <input type="text" name="name" id="name" placeholder="sem nome">
+            <!-- <button type="submit" class="ui-btn ui-corner-all ui-shadow ui-btn-b ui-btn-icon-left ui-icon-check">OK</button>  -->
+            <a id="submitButton" href="#pageExercicio" data-ajax="false" data-transition="flip" data-rel="page" class="ui-shadow ui-shadow-icon ui-btn ui-icon-check ui-btn-icon-left ui-mini">OK</a>
+        </div>
+    </form>
+</div>
+	<!-- ********************************************************************************** -->
+
+<div data-role="page" id="pagePrincipal">
+	
+	<!-- APPLICATION HEADER ******************************************************************* -->
+	<div data-role="header" data-position="fixed" data-theme="a">
+		<!--  <a href="#menuPrincipal" class="ui-btn ui-corner-all ui-shadow ui-icon-bars ui-btn-icon-notext">Menu</a>-->
+		<!-- <a href="#popupSurfista" data-rel="popup" data-position-to="window" data-transition="pop" class="ui-btn ui-corner-all ui-icon-bars ui-btn-icon-notext">Menu</a> -->
+        <h1>Surf Training</h1>
+        <a href="Javascript:SyncAll();" class="ui-btn ui-btn-right ui-corner-all ui-shadow ui-icon-refresh ui-btn-icon-notext">Sincronizar</a>
+    </div><!-- /header -->
+	<!-- ************************************************************************************** -->
+
+
+
+	<!-- MENU PRINCIPAL ******************************************************************* -->
+	<div data-role="panel" id="menuPrincipal" data-display="overlay" data-position="left" >
+	  
+	  <div data-role="main" class="ui-content">
+		  <h2>Menu Principal</h2>
+		  <p>Opções de menu...</p>	
+	  
+	  	
+	    
+	  </div>
+	  
+	</div>
+	<!-- ********************************************************************************** -->
+	
+ 	
+ 	
+ 	<!-- CONTEUDO PÁGINA ******************************************************************* -->
+  <div data-role="main" class="ui-content">
+  	<p align="center"><a id="novoButton" href="#popupSurfista" data-rel="popup" data-transition="flip" class="ui-shadow ui-shadow-icon ui-btn ui-btn-inline ui-icon-plus ui-btn-icon-left ">Novo</a></p>
+  	
+  	<div data-role="collapsibleset" data-content-theme="a" data-iconpos="right" id="exerciciosSet" data-corners="false">
+  	
+  	</div>
+  	
+  	<div id="appStatus">
+  		<h3>Status:</h3>
+  	</div>
+  	
+    
+  </div>
+  <!-- ********************************************************************************** -->
+  
+</div>
+
+
+<div data-role="page" id="pageExercicio">
+
+	<!-- APPLICATION HEADER ******************************************************************* -->
+	<div data-role="header" data-position="fixed" data-theme="a">
+		<a href="#pagePrincipal" id="backButton" data-ajax="false" class="ui-shadow-icon ui-btn ui-corner-all ui-icon-back ui-btn-icon-notext">Voltar</a>
+		<!-- <a href="#popupSurfista" data-rel="popup" data-position-to="window" data-transition="pop" class="ui-btn ui-corner-all ui-icon-bars ui-btn-icon-notext">Menu</a> -->
+        <h1 id="tempoDecorrido">0h00m00s</h1>
+    </div><!-- /header -->
+	<!-- ************************************************************************************** -->
+
+	<!-- CONTEUDO PÁGINA ******************************************************************* -->
+  <div data-role="main" class="ui-content">
+  	<p align="center"><a id="timerButton" href="Javascript: timer();" class="ui-shadow ui-shadow-icon ui-btn ui-btn-inline ui-icon-clock ui-btn-icon-left">Iniciar</a></p>
+  
+  	<table style="width: 100%;">
+  		<tr align="center">
+    		<td><input id="OKButton" type="button" value="OK" disabled onclick="setEvent(this)" data-corners="false"></td>
+    		<td><input id="INCButton" type="button" value="Inc" disabled onclick="setEvent(this)" data-corners="false"></td>
+    	</tr>
+    	<tr align="center">
+		    <td colspan="2"><input id="TOPButton" type="button" value="TOP" disabled onclick="setEvent(this)" data-corners="false"></td>
+    	</tr>
+  	</table>
+    
+  </div>
+  <!-- ********************************************************************************** -->
+
+</div>
+
+
+
+<div data-role="page" data-dialog="true" id="pagethree">
+ 
+  <div data-role="main" class="ui-content">
+    <form method="post" action="">
+      <div class="ui-field-contain">
+        <label for="email">E-mail:</label>
+    	<input type="email" name="email" id="email" placeholder="Endereço e-mail..">
+      </div>
+    </form>
+    <a href="#pageone" class="ui-btn" onclick="sendMail()">OK</a>
+	</div>
+</div>
+
+ 
+
+</body>
+</html>

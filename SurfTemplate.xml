@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session>
+	<details>
+		<date></date>
+		<athlete></athlete>
+	</details>
+	
+	<eventList startTime="00:00:00">
+		<event>
+			<time></time>
+			<type></type>
+		</event>
+	
+	</eventList>
+
+</session>
